@@ -1,0 +1,12 @@
+#---
+# - hosts: all
+#   become: true
+#   vars:
+
+#   tasks:
+
+# This is just a dammy task
+
+  - name: INSTALL-TASKS-DB-NONE - Dummy task
+    debug:
+      msg: "We do not install a Database for 5G"

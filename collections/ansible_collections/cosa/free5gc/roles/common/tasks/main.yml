@@ -1,0 +1,28 @@
+---
+# tasks file for common
+- name: MAIN - Update apt repo and cache 
+  tags: install-system, update-system, system, install, update
+  become: yes
+  apt: 
+    update_cache: yes 
+    force_apt_get: yes 
+    cache_valid_time: 3600
+
+- name: MAIN - Set timezone to Berlin / Europe
+  tags: install-system, update-system, system, install, update, clock
+  community.general.timezone:
+    name: Europe/Berlin
+
+- name: MAIN - Install git
+  tags: core, o5gs, db, install, update
+  apt:
+    name: git
+    state: present
+
+- name: MAIN - Create commmon deploy directory
+  tags: deploy-core, update-core, deploy-o5gs, update-o5gs, core, o5gs, deploy, update
+  become_user: "{{ normal_user_id }}"
+  file:
+    path: "{{ common_deploy_dir }}"
+    state: directory
+

@@ -1,0 +1,75 @@
+---
+# defaults file for core
+
+install_free5gc_src_version: "v3.4.2" 
+install_gtp5g_src_version: "v0.8.10"
+install_golang_lib_version: "v1.31.2"
+install_nodejs_lib_version: "v20.x"
+
+free5gc_src: 
+  task_file: "install-tasks-core-free5gc-source.yml"
+  version: "{{ install_free5gc_src_version }}" 
+  repo: "https://github.com/free5gc/free5gc.git"
+  dest_dir: "{{ normal_user_home_dir_abs_path }}/free5gc-{{ install_free5gc_src_version }}" 
+
+gtp5g_src:
+  task_file: "install-tasks-core-free5gc-source.yml"
+  version: "{{ install_gtp5g_src_version }}" 
+  repo: "https://github.com/free5gc/gtp5g.git"
+  dest_dir: "{{ normal_user_home_dir_abs_path }}/gtp5g-{{ install_gtp5g_src_version }}" 
+
+golang_lib:
+  version: "{{ install_golang_lib_version }}"
+  url: "https://golang.org/dl/go1.23.2.linux-arm64.tar.gz"
+  # url: "https://golang.org/dl/go1.23.2.linux-amd64.tar.gz"
+  
+
+nodejs_lib:
+  version:  " {{ install_nodejs_lib_version }}"
+  repo: "https://deb.nodesource.com/setup_20.x"
+  url: "https://deb.nodesource.com/gpgkey/nodesource.gpg.key"
+
+  
+    
+
+  
+
+
+###################### 2 5G Core/Network Configuration #######################
+
+core_executable: "{{ free5gc_src.dest_dir }}/run.sh"
+
+
+core_apn: "internet"
+core_sst: "1"
+core_sd: "000000"
+
+core_mcc: "999"
+core_mnc: "70"
+
+core_plmn: "{{core_mcc}}{{core_mcn}}"
+
+core_tac: "000001"
+
+core_simcard_inventory_file: deploy-config-simcards.yml
+amf_ipv4_net: "10.0.2.10"
+upf_ipv4_net: "10.0.2.12"
+
+sim_cards:
+- name: "Sim26"
+  imsi: "imsi-999700000128110"
+  key: "E501DCD94E0912B04AE041619DA43421"
+  opc: "13082466301232D8B8BB299F1867A861"
+  apn: "internet"
+  sst: "1"
+  sd: "000000"
+  gpsis: "msisdn-0900000005"
+
+- name: "Sim28"
+  imsi: "imsi-001010000105331"
+  key: "22231214410527097343456132856119"
+  opc: "35400111987345158373161168419158"
+  apn: "internet"
+  sst: "1"
+  sd: "000000"
+  gpsis: "msisdn-0900000006"

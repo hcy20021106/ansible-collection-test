@@ -1,0 +1,24 @@
+---
+# defaults file for common
+
+normal_user_id: "{{ ansible_ssh_user | default(ansible_env.SUDO_USER | default(ansible_env.LOGNAME)) }}"
+normal_user_home_dir: "~{{ normal_user_id }}"
+# will not work always but in most unix systems that will have home dirs in /home
+normal_user_home_dir_abs_path: "/home/{{ normal_user_id }}"
+
+## Basic unix configuration ##
+common_upgrade: true
+
+common_deploy_dir_name: "deployfree5gc"
+common_deploy_dir: "{{ normal_user_home_dir }}/{{ common_deploy_dir_name }}"
+
+####################### 1 5G System Configuration ############################
+
+## 5G Deployment scripts tools and configuration only informational
+common_deploy_repo: "https://git.mylab.th-luebeck.de/5g/cosa-5g-private-campus-network-deployment-oai"
+
+common_deploy_ipv4_net: 10.60.0.0/16
+common_deploy_static_ipv4_net: 10.60.100.0/24
+common_deploy_device_name: upfgtp
+
+

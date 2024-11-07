@@ -1,0 +1,23 @@
+---
+# handlers file for db
+- name: MongoDB - Start and enable MongoDB service
+  tags: core, o5gs, db, install, update
+  service:
+    name: mongod
+    state: restarted
+    enabled: yes
+  listen: "db restart mongodb"
+#  when: not db_option_select == "db_none" 
+
+- name: MongoDB - Check MongoDB service status
+  tags: check status
+  command: "systemctl status mongod"
+  register: dbstatus_output
+  changed_when: false
+  listen: "db restart mongodb"
+
+- name: MongoDB - Print MongoDB service status
+  tags: print status
+  debug:
+    msg: "{{ dbstatus_output.stdout_lines }}"
+  listen: "db restart mongodb"

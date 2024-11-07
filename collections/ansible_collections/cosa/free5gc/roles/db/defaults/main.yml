@@ -1,0 +1,27 @@
+---
+# defaults file for db
+# Todo there should be a better way
+install_mongodb_lib_version: "6.0" # Version is not important
+
+db_options:
+  # Install MongoDB from libraries
+  mongodb_lib: 
+    task_file: "install-tasks-db-mongo-library.yml"
+    version: "{{ install_mongodb_lib_version }}"
+    repo: "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-{{ install_mongodb_lib_version }}.gpg] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/{{ install_mongodb_lib_version }} multiverse"
+    #echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-6.0.gpg ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/6.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-6.0.list
+    dest_dir: "" 
+  # Do not install any db
+  db_none: 
+    task_file: "install-tasks-db-none.yml"
+    version: ""
+    repo: ""
+    dest_dir: ""
+
+# Variable to select db use "db_none" for no install
+db_option_select: mongodb_lib 
+# option_select: db_none 
+
+## MongoDB ##
+# mongodb_install: true
+

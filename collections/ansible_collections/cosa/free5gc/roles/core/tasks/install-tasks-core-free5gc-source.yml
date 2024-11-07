@@ -1,0 +1,235 @@
+  - name: Get current kernel version
+    command: uname -r
+    register: kernel_version
+  - name: free5gc - Installing packages for free5gc like git, python, ...
+    tags: core, tools,
+    become: yes
+    apt:
+      name: 
+      - git
+      - wget
+      - gcc
+      - g++
+      - cmake
+      - autoconf
+      - libtool
+      - pkg-config
+      - libmnl-dev
+      - gcc-12
+      - libyaml-dev
+      - linux-headers-{{ kernel_version.stdout }}
+      - jq
+      - tmux
+
+   # Install Go (Golang)
+  - name: "Check if Golang is already installed"
+    shell: |
+      export GOROOT=/usr/local/go
+      export PATH=$PATH:$GOROOT/bin
+      # sudo go run server.go 
+      go version
+    register: go_version
+    ignore_errors:  true
+
+  - name: Download Golang binary
+    ansible.builtin.get_url:
+      url: "{{ golang_lib.url }}"
+      dest: /tmp/go1.23.2.linux-amd64.tar.gz
+    when: go_version.rc != 0
+  - name: Extract Golang binary to /usr/local
+    become: yes
+    ansible.builtin.unarchive:
+      src: /tmp/go1.23.2.linux-amd64.tar.gz
+      dest: /usr/local
+      remote_src: yes
+    when: go_version.rc != 0
+
+  
+
+  - name: "INSTALL-TASKS-free5gc-SOURCE - download git repository for free5gc to {{ free5gc_src.dest_dir }}"
+    tags: core, o5gs, install, update
+    become_user: "{{ normal_user_id }}"
+    git:
+      repo: "{{ free5gc_src.repo }}"
+      dest: "{{ free5gc_src.dest_dir }}"
+      version: "{{ free5gc_src.version }}"
+      recursive: yes
+      update: no
+
+  - name: "Copy template files after cloning free5gc repository"
+    tags: core, o5gs, install, update
+    template:
+      src: "{{ item.src }}"
+      dest: "{{ item.dest }}"
+      mode: "{{ item.mode }}"
+    with_items:
+      - { src: 'templates/amfcfg.yaml.tmpl', dest: '{{ free5gc_src.dest_dir }}/config/amfcfg.yaml', mode: "u=rwx,g=rwx,o=rw" }
+      - { src: 'templates/upfcfg.yaml.tmpl', dest: '{{ free5gc_src.dest_dir }}/config/upfcfg.yaml', mode: "u=rwx,g=rwx,o=rw" }
+      - { src: 'templates/smfcfg.yaml.tmpl', dest: '{{ free5gc_src.dest_dir }}/config/smfcfg.yaml', mode: "u=rwx,g=rwx,o=rw" }
+      - { src: 'templates/nssfcfg.yaml.tmpl', dest: '{{ free5gc_src.dest_dir }}/config/nssfcfg.yaml', mode: "u=rwx,g=rwx,o=rw" }
+      - { src: 'templates/ausfcfg.yaml.tmpl', dest: '{{ free5gc_src.dest_dir }}/config/ausfcfg.yaml', mode: "u=rwx,g=rwx,o=rw" }
+  - name: "INSTALL-TASKS-gtp5g-SOURCE - downland git repository"
+    tags: gtp5g download
+    git:
+      repo: "{{ gtp5g_src.repo }}"
+      dest: "{{ gtp5g_src.dest_dir }}"
+      version: "{{ gtp5g_src.version }}"
+      update: no
+
+  - name: "Check if gtp5g module is loaded"
+    shell: lsmod | grep gtp5g
+    register: gtp5g_module
+    ignore_errors:  true
+
+  - name: "Check if Node.js is already installed"
+    command: node --version
+    register: node_version
+    ignore_errors:  true
+
+  - name: "Add NodeSource Node.js 20.x repository"
+    become: yes
+    apt_key:
+      url: "{{ nodejs_lib.url }}"
+      state: present
+    when: node_version.rc != 0
+  
+  - name: "Update Node.js 20.x repository"
+    become: yes
+    shell: curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+
+    when: node_version.rc != 0  
+
+  - name: "Update apt package index"
+    become: yes
+    apt: 
+      update_cache: yes
+    when: node_version.rc != 0
+
+  
+  - name: "Install Node.js"
+    become: yes
+    apt:
+      name: nodejs
+      state: present
+    when: node_version.rc != 0
+
+  # - name: "Check if corepack (Yarn) is enabled"
+  #   become: yes
+  #   command: yarn --version
+  #   register: yarn_version
+  #   ignore_errors: true
+
+  - name: Install Corepack
+    become: yes
+    npm:
+      name: corepack
+      global: yes
+
+  - name: Enable corepark
+    command: corepack enable
+    # when: yarn_version.rc != 0
+
+
+  - name: "INSTALL-TASKS-gtp5g-SOURCE - Run gtp5g build"
+    tags: gtp5g build
+    # become_user: "{{ normal_user_id }}"
+    become: yes
+    command: sudo make
+    args:
+      chdir: "{{ gtp5g_src.dest_dir }}"
+    when: gtp5g_module.rc != 0
+
+  - name: "INSTALL-TASKS-gtp5g-SOURCE - Run gtp5g install"
+    tags: gtp5g install
+    become: yes
+    command:   make install
+    args:
+      chdir: "{{ gtp5g_src.dest_dir }}"
+    when: gtp5g_module.rc != 0
+
+  - name: "INSTALL-TASKs-free5gc-SOURCE - Run free5gc build"
+    tags: free5gc build
+    become_user: "{{ normal_user_id }}"
+    shell: |
+      export GOROOT=/usr/local/go
+      export PATH=$PATH:$GOROOT/bin
+      make
+    args:
+      chdir: "{{ free5gc_src.dest_dir }}"
+      creates: "{{ free5gc_src.dest_dir }}/bin"
+    
+  - name: Kill existing Go server processes
+    become_user: "{{ normal_user_id }}"
+    shell: |
+      pkill -f 'go run server.go' || true  
+    ignore_errors: yes
+  
+  - name: Run Go server
+    become_user: "{{ normal_user_id }}"
+    shell: |
+      export GOROOT=/usr/local/go
+      export PATH=$PATH:$GOROOT/bin
+      # go run server.go 
+      tmux new-session -d -s go_server "go run server.go"
+    args:
+      chdir: "{{ free5gc_src.dest_dir }}/webconsole"
+    # poll: 
+
+  - name: Run the MongoDB query script
+    become_user: "{{ normal_user_id }}"
+    shell: "{{ common_deploy_dir }}/query-subscribers.sh"
+    register: script_output
+    ignore_errors: yes
+
+  
+
+  - name: Show the output of the script
+    debug:
+      var: script_output.stdout
+
+  - name: Extract ueId and servingPlmnId from script output
+    set_fact:
+          subscriber_data: >-
+            {{
+              script_output.stdout | from_json | default([]) if (script_output.stdout | length > 0) else []
+            }}
+  - name: Debug the converted JSON
+    debug:
+      var: subscriber_data
+
+
+  - name: Loop through ueId and servingPlmnId and make DELETE request
+    become_user: "{{ normal_user_id }}"
+    uri:
+      url: "http://127.0.0.1:5000/api/subscriber/{{ item.ueId }}/{{ item.servingPlmnId }}"
+      method: DELETE
+      headers:
+        Content-Type: "application/json"
+      status_code: [200, 204]  # Accept both 200 and 204 responses
+    loop: "{{ subscriber_data }}"
+    retries: 3
+    delay: 5
+    loop_control:
+      label: "{{ item.ueId }}"
+  
+
+
+
+  - name: Send PUT request to subscriber API
+    become: yes
+    uri:
+      url: 'http://127.0.0.1:5000/api/subscriber/{{ item.imsi }}/99970'
+      method: PUT
+      headers:
+        Content-Type: "application/json"
+      body: '{"userNumber":1,"plmnID":"99970","ueId":"{{ item.imsi }}","AuthenticationSubscription":{"authenticationMethod":"5G_AKA","sequenceNumber":"000000000024","authenticationManagementField":"8000","permanentKey":{"permanentKeyValue":"{{ item.key }}","encryptionKey":0,"encryptionAlgorithm":0},"milenage":{"op":{"opValue":"","encryptionKey":0,"encryptionAlgorithm":0}},"opc":{"opcValue":"{{ item.opc }}","encryptionKey":0,"encryptionAlgorithm":0}},"AccessAndMobilitySubscriptionData":{"gpsis":["{{ item.gpsis }}"],"subscribedUeAmbr":{"uplink":"1 Gbps","downlink":"2 Gbps"},"nssai":{"defaultSingleNssais":[{"sst":1,"sd":"010203"},{"sst":1,"sd":"000000"}],"singleNssais":[{"sst":1,"sd":"112233"}]}},"SessionManagementSubscriptionData":[{"singleNssai":{"sst":1,"sd":"000000"},"dnnConfigurations":{"internet":{"pduSessionTypes":{"defaultSessionType":"IPV4","allowedSessionTypes":["IPV4"]},"sscModes":{"defaultSscMode":"SSC_MODE_1","allowedSscModes":["SSC_MODE_2","SSC_MODE_3"]},"5gQosProfile":{"5qi":9,"arp":{"priorityLevel":8,"preemptCap":"","preemptVuln":""},"priorityLevel":8},"sessionAmbr":{"uplink":"1000 Mbps","downlink":"1000 Mbps"},"staticIpAddress":[{"ipv4Addr":"10.60.100.2"}]}}}],"SmfSelectionSubscriptionData":{"subscribedSnssaiInfos":{"01010203":{"dnnInfos":[{"dnn":"internet"}]},"01112233":{"dnnInfos":[{"dnn":"internet"}]},"01000000":{"dnnInfos":[{"dnn":"internet"}]}}},"AmPolicyData":{"subscCats":["free5gc"]},"SmPolicyData":{"smPolicySnssaiData":{"01010203":{"snssai":{"sst":1,"sd":"010203"},"smPolicyDnnData":{"internet":{"dnn":"internet"}}},"01112233":{"snssai":{"sst":1,"sd":"112233"},"smPolicyDnnData":{"internet":{"dnn":"internet"}}},"01000000":{"snssai":{"sst":1,"sd":"000000"},"smPolicyDnnData":{"internet":{"dnn":"internet"}}}}},"FlowRules":[{"filter":"1.1.1.1/32","precedence":128,"snssai":"01010203","dnn":"internet","qosRef":1},{"filter":"1.1.1.1/32","precedence":127,"snssai":"01112233","dnn":"internet","qosRef":2}],"QosFlows":[{"snssai":"01010203","dnn":"internet","qosRef":1,"5qi":8,"mbrUL":"208 Mbps","mbrDL":"208 Mbps","gbrUL":"108 Mbps","gbrDL":"108 Mbps"},{"snssai":"01112233","dnn":"internet","qosRef":2,"5qi":7,"mbrUL":"407 Mbps","mbrDL":"407 Mbps","gbrUL":"207 Mbps","gbrDL":"207 Mbps"}],"ChargingDatas":[{"snssai":"01010203","dnn":"","filter":"","chargingMethod":"Offline","quota":"100000","unitCost":"1"},{"snssai":"01010203","dnn":"internet","qosRef":1,"filter":"1.1.1.1/32","chargingMethod":"Offline","quota":"100000","unitCost":"1"}]}'
+      body_format: json
+      status_code: [200, 204]
+    register: result
+    retries: 10
+    delay: 2
+    with_items: "{{ sim_cards }}"
+    loop_control:
+      label: "{{ item.name }}"
+
+

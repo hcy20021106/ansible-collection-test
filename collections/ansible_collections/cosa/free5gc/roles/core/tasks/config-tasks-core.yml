@@ -1,0 +1,34 @@
+#---
+# - hosts: all
+#   become: true
+#   vars:
+
+#   tasks:
+
+  - name: CONFIG-TASKS-CORE - Update apt repo and cache 
+    tags: deploy-core, update-core, deploy-o5gs, update-o5gs, core, o5gs, db, deploy, update
+    become: yes
+    apt: 
+      update_cache: yes 
+      force_apt_get: yes 
+      cache_valid_time: 3600
+
+  - name: CONFIG-TASKS-CORE - Installing packages needed for core
+    tags: deploy-core, update-core, deploy-o5gs, update-o5gs, core, o5gs, db, deploy, update
+    become: yes
+    apt:
+      name: 
+      - iptables 
+      - ufw
+
+  - name: CONFIG-TASKS-CORE - Add query UEs scripts and configurations for 5g core
+    tags: deploy-core, update-core, deploy-o5gs, update-o5gs, core, o5gs, db, deploy, update
+    become_user: "{{ normal_user_id }}"
+    become: yes
+    template:
+      src: "{{ item.src }}"
+      dest: "{{ item.dest }}"
+      mode: "{{ item.mode }}" 
+    with_items:
+      - {src: 'templates/configure-free5gc.sh.tmpl', dest: '{{ common_deploy_dir }}/configure-o5gs.sh', mode: "u=rwx,g=rwx,o=rw"}
+      - {src: 'templates/query-subscribers.sh.tmpl', dest: '{{ common_deploy_dir }}/query-subscribers.sh', mode: "u=rwx,g=rwx,o=rw"}

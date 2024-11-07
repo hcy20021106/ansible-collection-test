@@ -1,0 +1,13 @@
+---
+
+- name: CORE-MAIN - Include Configuration Tasks for core config-tasks-core.yml "
+  import_tasks: config-tasks-core.yml
+  tags: config-core, update-core, config-o5gs, update-o5gs, core, o5gs, config, update
+
+# tasks file for core
+- name: "Include Installation Tasks for 5G core {{ core_task_file }} " 
+  include_tasks: "{{ core_task_file }}" #install-tasks-uhd-source.yml
+#  - import_tasks: "{{ install_sdr[uhd_src].task_file }}" #install-tasks-uhd-source.yml
+  tags: install-core, update-core, core, install, update
+  vars:
+    core_task_file: "{{ free5gc_src.task_file }}" # "install-tasks-uhd-source.yml"

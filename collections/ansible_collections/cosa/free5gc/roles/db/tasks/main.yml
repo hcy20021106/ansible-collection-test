@@ -1,0 +1,7 @@
+---
+# tasks file for db
+  - name: "INSTALL-MAIN - Include Installation Tasks for database {{ db_task_file }} " 
+    include_tasks: "{{ db_task_file }}" #install-tasks-mongodb-library.yml
+    tags: install-db, update-db, db, install, update
+    vars:
+      db_task_file: "{{ db_options[db_option_select].task_file }}" #install-tasks-mongodb-library.yml

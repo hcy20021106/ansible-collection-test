@@ -1,0 +1,16 @@
+- hosts: all
+  become: yes
+  collections:
+    # - cosa.fiveg
+    # - cosa.services
+    - cosa.free5gc
+  roles:
+    # - role: service
+    - role: core
+    # - role: common
+    # - role: allinone
+    # - role: cosa.services.common
+    # - role: common
+      # vars:
+      #   open5gs_version: "2.3.6"
+      #   open5gs_mongodb_uri: "mongodb://localhost:27017/open5gs"

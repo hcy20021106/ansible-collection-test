@@ -1,0 +1,55 @@
+
+- name: Install gnupg
+  tags: core, o5gs, db, install, update
+  apt:
+    name: gnupg
+    state: present
+
+- name: Check if MongoDB APT keyring exists
+  stat:
+    path: /usr/share/keyrings/mongo-key.gpg
+  register: mongo_keyring_exists
+
+- name: Add MongoDB APT keyring
+  become_user: "{{ normal_user_id }}"
+  # shell: "curl -k -fsSL https://www.mongodb.org/static/pgp/server-{{ db_options[db_option_select].version }}.asc | sudo gpg --dearmour -o /usr/share/keyrings/mongo-key.gpg"
+  shell: "curl -k -fsSL https://www.mongodb.org/static/pgp/server-6.0.asc | sudo gpg --dearmour -o /usr/share/keyrings/mongo-key.gpg"
+  args:
+    executable: /bin/bash
+  when: not mongo_keyring_exists.stat.exists
+
+- name: Check if MongoDB repository exists
+  stat:
+    path: /etc/apt/sources.list.d/mongodb-org-{{ db_options[db_option_select].version }}.list
+  register: mongo_repository_exists
+
+- name: Add MongoDB repository
+  # become_user: "{{ normal_user_id }}"
+  become: yes
+  # shell: sudo sh -c 'echo deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongo-key.gpg] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/6.0 multiverse > /etc/apt/sources.list.d/mongodb-org-{{ db_options[db_option_select].version }}.list'
+  shell: 'echo deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongo-key.gpg] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/6.0 multiverse > /etc/apt/sources.list.d/mongodb-org-{{ db_options[db_option_select].version }}.list'
+  
+  args:
+    executable: /bin/bash
+  when: not mongo_repository_exists.stat.exists
+
+
+
+- name: MongoDB - Update apt cache
+  # become_user: "{{ normal_user_id }}"
+  become: yes
+  tags: update
+  apt:
+    update_cache: yes
+
+
+- name: MongoDB - Install MongoDB
+  tags: install
+  apt:
+    name: mongodb-org
+    state: present
+  # notify handler
+  notify: db restart mongodb
+
+- name: MongoDB - Ensure handlers are run immediately, if needed for mongodb restart
+  meta: flush_handlers
